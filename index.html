@@ -99,8 +99,9 @@
 
     async function loadData() {
       try {
-        // 1. IP & GEO laden
-        const geo = await fetch("https://ipapi.co/json/").then(r => r.json());
+        // 1. Neue GEO-IP API (CORS erlaubt)
+        const geo = await fetch("https://ipwho.is/").then(r => r.json());
+
         ip = geo.ip;
         lat = geo.latitude;
         lon = geo.longitude;
@@ -119,7 +120,7 @@
         trustSpan.textContent = trustScore;
         riskSpan.textContent = riskLevel;
 
-        // 3. Warnstufen Farbbox
+        // 3. Farbbox basierend auf Risiko
         if (riskLevel === "low") {
           riskBox.className = "riskBox green";
           riskBox.textContent = "🟢 Niedriges Risiko";
