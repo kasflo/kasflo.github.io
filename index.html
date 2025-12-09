@@ -1,134 +1,180 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IP Risk Check</title>
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IP Risk Check (AbuseIPDB)</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
+      padding: 20px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #000;
+      color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      background-color: #000;
-      color: white;
-      padding: 20px;
     }
-
+    h2 { margin: 8px 0 0 0; }
     .box {
       width: 90%;
-      max-width: 420px;
+      max-width: 520px;
       background: #111;
-      padding: 20px;
-      border-radius: 16px;
-      margin-top: 20px;
-      text-align: center;
-      border: 2px solid #222;
-    }
-
-    .riskBox {
-      margin-top: 20px;
       padding: 18px;
       border-radius: 14px;
-      font-size: 18px;
-      font-weight: bold;
+      margin-top: 18px;
+      text-align: left;
+      border: 2px solid #222;
     }
-
-    .green { background: #0a4; border: 2px solid #0f6; }
-    .yellow { background: #ca0; border: 2px solid #fd0; }
-    .red { background: #a00; border: 2px solid #f22; }
-
+    .row { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    .label { color:#aaa; font-size:14px; }
+    .value { font-weight:700; font-size:15px; }
+    .riskBox { margin-top:14px; padding:16px; border-radius:12px; font-size:16px; font-weight:700; text-align:center; }
+    .green { background:#0a4; border:2px solid #0f6; }
+    .yellow { background:#ca0; border:2px solid #fd0; }
+    .red { background:#a00; border:2px solid #f22; }
     button {
       width: 90%;
       max-width: 340px;
-      padding: 16px;
+      padding: 12px;
       margin: 10px 0;
-      font-size: 17px;
+      font-size:15px;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       background: #007aff;
       color: white;
       cursor: pointer;
     }
-
-    button:active {
-      opacity: 0.7;
-    }
+    .smallBtn { width:auto; padding:8px 12px; font-size:13px; margin-left:8px; }
+    pre { background:#000; color:#ddd; padding:8px; border-radius:8px; overflow:auto; max-height:180px; }
+    .hint { color:#bbb; font-size:13px; margin-top:8px; }
   </style>
 </head>
-
 <body>
-
-  <h2>🔍 IP & Risk Analyse</h2>
+  <h2>🔍 IP & Risk Analyse (AbuseIPDB)</h2>
 
   <div id="infoBox" class="box">
-    <p><b>IP:</b> <span id="ip">Lade...</span></p>
-    <p><b>Latitude:</b> <span id="lat">-</span></p>
-    <p><b>Longitude:</b> <span id="lon">-</span></p>
-    <p><b>Fraud Score:</b> <span id="trust">-</span></p>
-    <p><b>Risk Level:</b> <span id="risk">-</span></p>
+    <div class="row"><span class="label">IP</span><span id="ip" class="value">Lade...</span></div>
+    <div class="row"><span class="label">Land</span><span id="country" class="value">-</span></div>
+    <div class="row"><span class="label">Latitude</span><span id="lat" class="value">-</span></div>
+    <div class="row"><span class="label">Longitude</span><span id="lon" class="value">-</span></div>
+    <div class="row"><span class="label">Abuse Score</span><span id="trust" class="value">-</span></div>
+    <div class="row"><span class="label">Total Reports</span><span id="reports" class="value">-</span></div>
 
     <div id="riskBox" class="riskBox">Warte auf Daten...</div>
+
+    <div class="hint" id="hint">Die Seite benutzt AbuseIPDB — falls du einen CORS-/Blocker-Fehler siehst, nutze bitte einen Worker/Proxy oder deaktiviere temporär Erweiterungen zum Testen.</div>
+
+    <details style="margin-top:12px; color:#ddd;">
+      <summary style="cursor:pointer;">Debug: Roh-Antworten</summary>
+      <div style="margin-top:8px;">
+        <div><strong>AbuseIPDB raw:</strong></div>
+        <pre id="rawAbuse">-</pre>
+        <div style="margin-top:8px;"><strong>ipwho.is raw:</strong></div>
+        <pre id="rawGeo">-</pre>
+      </div>
+    </details>
   </div>
 
-  <button id="copyIP">IP kopieren</button>
-  <button id="copyLat">Latitude kopieren</button>
-  <button id="copyLong">Longitude kopieren</button>
-  <button id="copyScore">Score kopieren</button>
+  <div style="width:90%; max-width:520px; display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+    <button id="refreshBtn">Aktualisieren</button>
+    <button id="copyIP" class="smallBtn">IP kopieren</button>
+    <button id="copyScore" class="smallBtn">Score kopieren</button>
+  </div>
 
   <script>
-    let lat, lon, ip, trustScore, riskLevel;
+    // === KONFIG: DEIN AbuseIPDB API KEY ===
+    const API_KEY = "a8b4fab0750e0784c480341512d9a1043e17031902a38f51dbba4b59607ae0a98d38ab8a3463c0f3";
+    // ======================================
 
-    const API_KEY = "6PHb0DHakCaJteyRDRO4auFR7uf3yr38";
-
-    const ipSpan = document.getElementById("ip");
-    const latSpan = document.getElementById("lat");
-    const lonSpan = document.getElementById("lon");
-    const trustSpan = document.getElementById("trust");
-    const riskSpan = document.getElementById("risk");
+    const ipEl = document.getElementById("ip");
+    const latEl = document.getElementById("lat");
+    const lonEl = document.getElementById("lon");
+    const trustEl = document.getElementById("trust");
+    const reportsEl = document.getElementById("reports");
+    const countryEl = document.getElementById("country");
     const riskBox = document.getElementById("riskBox");
+    const rawAbuse = document.getElementById("rawAbuse");
+    const rawGeo = document.getElementById("rawGeo");
+    const hintEl = document.getElementById("hint");
+
+    let currentIP = null;
+    let currentScore = null;
 
     async function loadData() {
+      // Reset UI
+      ipEl.textContent = "Lade...";
+      latEl.textContent = "-";
+      lonEl.textContent = "-";
+      trustEl.textContent = "-";
+      reportsEl.textContent = "-";
+      countryEl.textContent = "-";
+      riskBox.className = "riskBox";
+      riskBox.textContent = "Warte auf Daten...";
+      rawAbuse.textContent = "-";
+      rawGeo.textContent = "-";
+      hintEl.style.display = "block";
+
       try {
-        // 1. GEO-IP über ipwho.is (CORS-frei)
-        const geo = await fetch("https://ipwho.is/").then(r => r.json());
-        ip = geo.ip;
-        lat = geo.latitude;
-        lon = geo.longitude;
+        // 1) GEO via ipwho.is (CORS-freundlich)
+        const geoRes = await fetch("https://ipwho.is/").then(r => r.json());
+        rawGeo.textContent = JSON.stringify(geoRes, null, 2);
 
-        ipSpan.textContent = ip;
-        latSpan.textContent = lat;
-        lonSpan.textContent = lon;
+        if (!geoRes || !geoRes.ip) {
+          throw new Error("ipwho.is lieferte keine IP.");
+        }
 
-        // 2. IPQualityScore Risk API
-        const url = `https://ipqualityscore.com/api/json/ip/${API_KEY}/${ip}`;
-        const ipqs = await fetch(url).then(r => r.json());
+        currentIP = geoRes.ip;
+        ipEl.textContent = currentIP;
+        latEl.textContent = geoRes.latitude ?? "-";
+        lonEl.textContent = geoRes.longitude ?? "-";
+        countryEl.textContent = geoRes.country ?? geoRes.country_code ?? "-";
 
-        console.log("IPQS Response:", ipqs);
+        // 2) AbuseIPDB Anfrage
+        const url = `https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(currentIP)}&maxAgeInDays=90`;
 
-        if (!ipqs || ipqs.success === false) {
-          trustSpan.textContent = "Fehler";
-          riskSpan.textContent = "Fehler";
+        // build headers
+        const headers = {
+          "Accept": "application/json",
+          "Key": API_KEY
+        };
+
+        // fetch AbuseIPDB
+        const abuseRes = await fetch(url, { method: "GET", headers });
+
+        // if blocked by client/extension, this will usually throw or be blocked in network tab
+        if (!abuseRes.ok) {
+          // try to read body for better diagnostics (may also be blocked)
+          let txt = "";
+          try { txt = await abuseRes.text(); } catch (e) { txt = "(kein body)"; }
+          const msg = `AbuseIPDB returned HTTP ${abuseRes.status}: ${txt}`;
+          console.warn(msg);
+          rawAbuse.textContent = msg;
+          trustEl.textContent = "Fehler";
+          reportsEl.textContent = "Fehler";
           riskBox.className = "riskBox red";
-          riskBox.textContent = "⚠️ IPQualityScore liefert keine Daten zurück!";
+          riskBox.textContent = "⚠️ Fehler von AbuseIPDB (Status " + abuseRes.status + "). Prüfe Key/Proxy/Blocker.";
           return;
         }
 
-        // Fraud Score (0 = sicher, 100 = extrem riskant)
-        trustScore = ipqs.fraud_score;
+        const abuseJson = await abuseRes.json();
+        rawAbuse.textContent = JSON.stringify(abuseJson, null, 2);
+        // Struktur: abuseJson.data.abuseConfidenceScore, abuseJson.data.totalReports
+        const data = abuseJson.data ?? abuseJson; // safety
 
-        // eigenes Risk-Level basierend auf Fraud Score
-        if (trustScore <= 25) riskLevel = "low";
-        else if (trustScore <= 60) riskLevel = "medium";
+        const abuseScore = (data.abuseConfidenceScore ?? data.abuse_score ?? data.abuseConfidenceScore) || 0;
+        const totalReports = (data.totalReports ?? data.total_reports ?? 0);
+
+        currentScore = abuseScore;
+        trustEl.textContent = String(abuseScore);
+        reportsEl.textContent = String(totalReports);
+
+        // Map score -> Risk level
+        let riskLevel = "low";
+        if (abuseScore <= 25) riskLevel = "low";
+        else if (abuseScore <= 60) riskLevel = "medium";
         else riskLevel = "high";
 
-        trustSpan.textContent = trustScore;
-        riskSpan.textContent = riskLevel;
-
-        // 3. Farbbox setzen
         if (riskLevel === "low") {
           riskBox.className = "riskBox green";
           riskBox.textContent = "🟢 Niedriges Risiko";
@@ -137,28 +183,43 @@
           riskBox.textContent = "🟡 Mittleres Risiko";
         } else {
           riskBox.className = "riskBox red";
-          riskBox.textContent = "🔴 HOHES RISIKO!";
+          riskBox.textContent = "🔴 Hohes Risiko — Vorsicht!";
         }
 
+        // Hide hint on success
+        hintEl.style.display = "none";
+
       } catch (err) {
-        console.error(err);
+        console.error("Fehler in loadData:", err);
+        // Differentiate common issues
+        const msg = String(err && err.message ? err.message : err);
+        rawAbuse.textContent = msg;
+        rawGeo.textContent = rawGeo.textContent || "-";
+
+        trustEl.textContent = "Fehler";
+        reportsEl.textContent = "Fehler";
         riskBox.className = "riskBox red";
-        riskBox.textContent = "⚠️ Fehler beim Laden der Daten!";
+
+        // Heuristiken für hilfreiche Fehlermeldungen
+        if (msg.includes("blocked") || msg.includes("ERR_BLOCKED_BY_CLIENT") || msg.includes("Failed to fetch")) {
+          riskBox.textContent = "⚠️ Anfrage blockiert (Adblocker/Privacy-Erweiterung oder CORS). Versuche: Erweiterungen deaktivieren oder Proxy/Worker verwenden.";
+        } else {
+          riskBox.textContent = "⚠️ Fehler beim Laden der Daten: " + msg;
+        }
       }
     }
 
+    // Buttons
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+    document.getElementById("copyIP").addEventListener("click", () => {
+      if (currentIP) navigator.clipboard.writeText(currentIP);
+    });
+    document.getElementById("copyScore").addEventListener("click", () => {
+      if (currentScore !== null) navigator.clipboard.writeText(String(currentScore));
+    });
+
+    // Auto-run
     loadData();
-
-    function copy(text) {
-      if (!text) return;
-      navigator.clipboard.writeText(text.toString());
-    }
-
-    document.getElementById("copyIP").addEventListener("click", () => copy(ip));
-    document.getElementById("copyLat").addEventListener("click", () => copy(lat));
-    document.getElementById("copyLong").addEventListener("click", () => copy(lon));
-    document.getElementById("copyScore").addEventListener("click", () => copy(trustScore));
   </script>
-
 </body>
 </html>
