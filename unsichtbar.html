@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unsichtbare Zeichen Generator</title>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f1220;
+      color: #ffffff;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .card {
+      max-width: 600px;
+      margin: auto;
+      background: #171a2e;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      border-radius: 12px;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 14px;
+      font-size: 1rem;
+      border-radius: 12px;
+      border: none;
+      background: #6c7cff;
+      color: white;
+      font-weight: 600;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .hint {
+      opacity: 0.8;
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Unsichtbare Zeichen einfügen</h1>
+
+    <textarea
+      id="input"
+      placeholder="Text eingeben …"
+    ></textarea>
+
+    <button onclick="processAndCopy()">
+      Generieren & Kopieren
+    </button>
+
+    <div class="hint">
+      iOS-stabil · zwischen jedem Buchstaben (WORD JOINER / ZWNJ)
+    </div>
+  </div>
+
+  <script>
+    // iOS-stabile unsichtbare Unicode-Zeichen
+    const INVISIBLE_CHARS = ["\u2060", "\u200C"];
+
+    // Fügt 2–3 unsichtbare Zeichen ZWISCHEN JEDEM BUCHSTABENPAAR ein
+    function injectBetweenLetters(text, minK = 2, maxK = 3) {
+      let result = "";
+
+      for (let i = 0; i < text.length; i++) {
+        const current = text[i];
+        const next = text[i + 1];
+
+        result += current;
+
+        // nur zwischen zwei Buchstaben einfügen
+        if (
+          next &&
+          /\p{L}/u.test(current) &&
+          /\p{L}/u.test(next)
+        ) {
+          const k =
+            Math.floor(Math.random() * (maxK - minK + 1)) + minK;
+
+          for (let j = 0; j < k; j++) {
+            result +=
+              INVISIBLE_CHARS[
+                Math.floor(Math.random() * INVISIBLE_CHARS.length)
+              ];
+          }
+        }
+      }
+
+      return result;
+    }
+
+    async function processAndCopy() {
+      const input = document.getElementById("input").value;
+      const output = injectBetweenLetters(input);
+
+      try {
+        await navigator.clipboard.writeText(output);
+        alert("✅ In die Zwischenablage kopiert");
+      } catch (e) {
+        alert("❌ Kopieren fehlgeschlagen – bitte manuell markieren");
+      }
+    }
+  </script>
+</body>
+</html>
