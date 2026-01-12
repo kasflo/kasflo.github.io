@@ -3,128 +3,94 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Unsichtbare Zeichen Generator</title>
+  <title>Unsichtbare Zeichen</title>
 
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f1220;
-      color: #ffffff;
+      color: #fff;
       margin: 0;
       padding: 20px;
     }
-
     .card {
       max-width: 600px;
       margin: auto;
       background: #171a2e;
       border-radius: 16px;
       padding: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
-
-    h1 {
-      font-size: 1.3rem;
-      margin-bottom: 12px;
-    }
-
-    textarea {
+    textarea, select {
       width: 100%;
-      min-height: 120px;
       border-radius: 12px;
       border: none;
       padding: 12px;
       font-size: 1rem;
-      resize: vertical;
+      margin-bottom: 10px;
     }
-
+    textarea { min-height: 120px; resize: vertical; }
     button {
       width: 100%;
-      margin-top: 12px;
       padding: 14px;
       font-size: 1rem;
       border-radius: 12px;
       border: none;
       background: #6c7cff;
-      color: white;
+      color: #fff;
       font-weight: 600;
-    }
-
-    button:active {
-      transform: scale(0.98);
-    }
-
-    .hint {
-      opacity: 0.8;
-      font-size: 0.85rem;
-      margin-top: 8px;
     }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h1>Unsichtbare Zeichen einfügen</h1>
+    <h2>Unsichtbare Zeichen Generator</h2>
 
-    <textarea
-      id="input"
-      placeholder="Text eingeben …"
-    ></textarea>
+    <textarea id="input" placeholder="Text eingeben …"></textarea>
 
-    <button onclick="processAndCopy()">
-      Generieren & Kopieren
-    </button>
+    <select id="level">
+      <option value="1">Stufe 1</option>
+      <option value="2">Stufe 2</option>
+      <option value="3">Stufe 3</option>
+      <option value="4">Stufe 4</option>
+      <option value="5">Stufe 5</option>
+    </select>
 
-    <div class="hint">
-      iOS-stabil · zwischen jedem Buchstaben (WORD JOINER / ZWNJ)
-    </div>
+    <button onclick="processAndCopy()">Generieren & Kopieren</button>
   </div>
 
   <script>
-    // iOS-stabile unsichtbare Unicode-Zeichen
-    const INVISIBLE_CHARS = ["\u2060", "\u200C"];
+    // Pro Stufe EIN iOS-/Hinge-stabiles Zeichen
+    const LEVEL_CHAR = {
+      1: "\u2060", // WORD JOINER
+      2: "\u200C", // ZWNJ
+      3: "\u200D", // ZWJ
+      4: "\u2063", // INVISIBLE SEPARATOR
+      5: "\u2062"  // INVISIBLE TIMES
+    };
 
-    // Fügt 2–3 unsichtbare Zeichen ZWISCHEN JEDEM BUCHSTABENPAAR ein
-    function injectBetweenLetters(text, minK = 2, maxK = 3) {
+    function injectBeforeEveryLetter(text, level) {
+      const chInvisible = LEVEL_CHAR[level];
       let result = "";
 
-      for (let i = 0; i < text.length; i++) {
-        const current = text[i];
-        const next = text[i + 1];
-
-        result += current;
-
-        // nur zwischen zwei Buchstaben einfügen
-        if (
-          next &&
-          /\p{L}/u.test(current) &&
-          /\p{L}/u.test(next)
-        ) {
-          const k =
-            Math.floor(Math.random() * (maxK - minK + 1)) + minK;
-
-          for (let j = 0; j < k; j++) {
-            result +=
-              INVISIBLE_CHARS[
-                Math.floor(Math.random() * INVISIBLE_CHARS.length)
-              ];
-          }
+      for (const ch of text) {
+        if (/\p{L}/u.test(ch)) {
+          // VOR jedem Buchstaben: zufällig 2 ODER 3 unsichtbare Zeichen
+          const count = Math.random() < 0.5 ? 2 : 3;
+          result += chInvisible.repeat(count);
         }
+        result += ch;
       }
-
       return result;
     }
 
     async function processAndCopy() {
-      const input = document.getElementById("input").value;
-      const output = injectBetweenLetters(input);
+      const text = document.getElementById("input").value;
+      const level = document.getElementById("level").value;
 
-      try {
-        await navigator.clipboard.writeText(output);
-        alert("✅ In die Zwischenablage kopiert");
-      } catch (e) {
-        alert("❌ Kopieren fehlgeschlagen – bitte manuell markieren");
-      }
+      const output = injectBeforeEveryLetter(text, level);
+      await navigator.clipboard.writeText(output);
+      alert("✅ In die Zwischenablage kopiert");
     }
   </script>
 </body>
