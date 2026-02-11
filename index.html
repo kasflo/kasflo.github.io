@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -170,9 +169,15 @@
           riskBox.className = "riskBox red";
           riskBox.textContent = "🔴 HOHES RISIKO!";
         }
+
       } catch (err) {
-        // Fehleranzeige komplett entfernt (keine Text-/UI-Ausgabe)
         console.error(err);
+
+        // Nur die Fehlermeldung entfernen:
+        // Kein "Fehler beim Laden..." Text mehr.
+        // Optional: rot markieren, aber leer lassen.
+        riskBox.className = "riskBox red";
+        riskBox.textContent = "";
       }
     }
 
@@ -184,11 +189,9 @@
     }
 
     document.getElementById("copyIP").addEventListener("click", () => copy(ip));
-    document.getElementById("copyLat").addEventListener("click", () => copy(lat)); // versetzt
+    document.getElementById("copyLat").addEventListener("click", () => copy(lat));   // versetzt
     document.getElementById("copyLong").addEventListener("click", () => copy(lon)); // versetzt
     document.getElementById("copyScore").addEventListener("click", () => copy(trustScore));
   </script>
 
-</body>
-</html>
-```
+</
