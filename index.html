@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -87,6 +88,7 @@
 
   <script>
     let lat, lon, ip, trustScore, riskLevel;
+    let realLat, realLon; // echte Koordinaten intern
 
     const API_KEY = "0NZfP48YNIz1Z-ICI9yTYi7N7.tpsVWPSNyP6NlLPC87WN18EoGWHtbdmfGOC1kQ";
 
@@ -97,13 +99,51 @@
     const riskSpan = document.getElementById("risk");
     const riskBox = document.getElementById("riskBox");
 
+    // Erzeugt einen Punkt in zufälliger Richtung und Distanz (2–3 km) vom Original
+    function getOffsetCoordinate(latDeg, lonDeg, minKm = 2, maxKm = 3) {
+      const R = 6371000; // Meter
+      const lat1 = (latDeg * Math.PI) / 180;
+      const lon1 = (lonDeg * Math.PI) / 180;
+
+      const distance = (minKm + Math.random() * (maxKm - minKm)) * 1000; // 2–3 km
+      const bearing = Math.random() * 2 * Math.PI; // Richtung 0..2π
+      const dr = distance / R;
+
+      const lat2 = Math.asin(
+        Math.sin(lat1) * Math.cos(dr) +
+        Math.cos(lat1) * Math.sin(dr) * Math.cos(bearing)
+      );
+
+      const lon2 =
+        lon1 +
+        Math.atan2(
+          Math.sin(bearing) * Math.sin(dr) * Math.cos(lat1),
+          Math.cos(dr) - Math.sin(lat1) * Math.sin(lat2)
+        );
+
+      let newLat = (lat2 * 180) / Math.PI;
+      let newLon = (lon2 * 180) / Math.PI;
+
+      // Lon normalisieren auf [-180, 180]
+      newLon = ((newLon + 540) % 360) - 180;
+
+      return { lat: newLat, lon: newLon };
+    }
+
     async function loadData() {
       try {
         // 1. IP & GEO laden
         const geo = await fetch("https://ipapi.co/json/").then(r => r.json());
         ip = geo.ip;
-        lat = geo.latitude;
-        lon = geo.longitude;
+
+        // echte Werte intern speichern
+        realLat = parseFloat(geo.latitude);
+        realLon = parseFloat(geo.longitude);
+
+        // Lat/Lon versetzen (2–3 km) und diese Werte dann anzeigen + kopieren
+        const off = getOffsetCoordinate(realLat, realLon, 2, 3);
+        lat = off.lat.toFixed(6);
+        lon = off.lon.toFixed(6);
 
         ipSpan.textContent = ip;
         latSpan.textContent = lat;
@@ -130,26 +170,25 @@
           riskBox.className = "riskBox red";
           riskBox.textContent = "🔴 HOHES RISIKO!";
         }
-
       } catch (err) {
+        // Fehleranzeige komplett entfernt (keine Text-/UI-Ausgabe)
         console.error(err);
-        riskBox.className = "riskBox red";
-        riskBox.textContent = "⚠️ Fehler beim Laden der Daten";
       }
     }
 
     loadData();
 
     function copy(text) {
-      if (!text) return;
-      navigator.clipboard.writeText(text.toString());
+      if (text === undefined || text === null || text === "") return;
+      navigator.clipboard.writeText(text.toString()).catch(console.error);
     }
 
     document.getElementById("copyIP").addEventListener("click", () => copy(ip));
-    document.getElementById("copyLat").addEventListener("click", () => copy(lat));
-    document.getElementById("copyLong").addEventListener("click", () => copy(lon));
+    document.getElementById("copyLat").addEventListener("click", () => copy(lat)); // versetzt
+    document.getElementById("copyLong").addEventListener("click", () => copy(lon)); // versetzt
     document.getElementById("copyScore").addEventListener("click", () => copy(trustScore));
   </script>
 
 </body>
 </html>
+```
